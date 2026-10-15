@@ -1,6 +1,6 @@
 # delivery-evidence-check
 
-> Fingerprint delivered files with SHA-256 so you can prove later that nothing was swapped or edited.
+> Fingerprint delivered files with SHA-256 so you can check later that nothing was swapped or edited, provided the manifest itself is kept somewhere the other party cannot change.
 
 <!-- Badges: enable after first PyPI publish -->
 <!-- [![PyPI](https://img.shields.io/pypi/v/delivery-evidence-check)](https://pypi.org/project/delivery-evidence-check/) -->
