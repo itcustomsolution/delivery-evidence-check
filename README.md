@@ -1,5 +1,12 @@
 # delivery-evidence-check
 
+> Fingerprint delivered files with SHA-256 so you can prove later that nothing was swapped or edited.
+
+<!-- Badges: enable after first PyPI publish -->
+<!-- [![PyPI](https://img.shields.io/pypi/v/delivery-evidence-check)](https://pypi.org/project/delivery-evidence-check/) -->
+<!-- [![tests](https://github.com/itcustomsolution/delivery-evidence-check/actions/workflows/tests.yml/badge.svg)](https://github.com/itcustomsolution/delivery-evidence-check/actions/workflows/tests.yml) -->
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Check that the local files accompanying a handoff still match an explicit
 SHA-256 manifest. Create a manifest from named files, verify it later, and get
 clear errors for changed, missing or unsafe paths.
@@ -37,7 +44,9 @@ the tool itself never writes, scans directories, expands globs or runs a check.
 List each file explicitly. Do not redirect output onto a listed input file.
 Verification defaults to the manifest's directory unless `--root` is supplied.
 
-To install a command in a virtual environment:
+After the first PyPI release: `pipx install delivery-evidence-check` (or `pip install delivery-evidence-check`).
+
+To install from source in a virtual environment:
 
 ```sh
 python -m venv .venv
@@ -155,3 +164,11 @@ python -m unittest discover -s tests -v
 
 Tests use temporary directories and synthetic data. CI covers Python 3.10, 3.12
 and 3.14 on Linux, plus Python 3.14 on macOS. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Contributing
+
+Issues and small pull requests are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Run `python -m unittest discover -s tests` before opening a PR. Release history is in [CHANGELOG.md](CHANGELOG.md).
+
+## License
+
+MIT, see [LICENSE](LICENSE).
