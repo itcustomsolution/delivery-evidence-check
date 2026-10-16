@@ -6,6 +6,16 @@ import sys
 from . import __version__, EvidenceError, create_manifest, load_manifest, verify_manifest
 
 
+def _byte_limit(value):
+    try:
+        number = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError('byte limit must be a nonnegative integer') from exc
+    if number < 0:
+        raise argparse.ArgumentTypeError('byte limit must be a nonnegative integer')
+    return number
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Check local evidence integrity, not truth or completion.')
     parser.add_argument('--version', action='version', version=__version__)
@@ -17,10 +27,16 @@ def main(argv=None):
     verify.add_argument('manifest', type=Path)
     verify.add_argument('--root', type=Path, help='file root; defaults to the manifest directory')
     verify.add_argument('--json', action='store_true', help='print a machine-readable report')
+    for command in (create, verify):
+        command.add_argument('--max-file-bytes', type=_byte_limit,
+                             help='optional maximum bytes per evidence file')
+        command.add_argument('--max-total-bytes', type=_byte_limit,
+                             help='optional total evidence-byte budget for this invocation')
     args = parser.parse_args(argv)
+    limits = {'max_file_bytes': args.max_file_bytes, 'max_total_bytes': args.max_total_bytes}
     if args.command == 'create':
         try:
-            manifest = create_manifest(args.root, args.paths)
+            manifest = create_manifest(args.root, args.paths, **limits)
         except EvidenceError as exc:
             print('error: ' + str(exc), file=sys.stderr)
             return 1
@@ -28,7 +44,7 @@ def main(argv=None):
         return 0
     try:
         manifest = load_manifest(args.manifest)
-        result = verify_manifest(manifest, args.root if args.root is not None else args.manifest.parent)
+        result = verify_manifest(manifest, args.root if args.root is not None else args.manifest.parent, **limits)
     except EvidenceError as exc:
         result = {'ok': False, 'scope': 'local_file_integrity', 'files_checked': 0, 'claimed_checks': 0,
                   'issues': [{'code': 'input_error', 'location': '$', 'message': str(exc)}]}
@@ -39,7 +55,7 @@ def main(argv=None):
               + str(result['files_checked']) + ' file(s) read.')
         for issue in result['issues']:
             print(f"- {issue['location']}: {issue['code']}: {issue['message']}")
-        print('Matching hashes do not prove truth, ownership, test success, or task completion.')
+        print('Matching hashes do not prove truth, authenticity, ownership, authorization, test success, or task completion.')
     return 0 if result['ok'] else 1
 
 
