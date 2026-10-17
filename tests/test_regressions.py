@@ -151,6 +151,16 @@ class Reader(Base):
         with self.assertRaises(EvidenceError) as caught:
             load_manifest(path)
         self.assertNotIn('SENTINEL', str(caught.exception))
+        self.assertRegex(str(caught.exception), r'line 1, column \d+')
+        for raw, pattern in ((b'{"x": "\xff"}', 'UTF-8'), (b'[' * 100000 + b']' * 100000, 'too deep|unsupported|invalid'),
+                             (b'{"x": ' + b'9' * 5000 + b'}', 'unsupported')):
+            path.write_bytes(raw)
+            with self.assertRaisesRegex(EvidenceError, pattern):
+                load_manifest(path)
+        path.write_text('{"x": 1e999}')
+        with self.assertRaises(EvidenceError) as caught:
+            load_manifest(path)
+        self.assertNotIn('UTF-8', str(caught.exception))  # no misleading prefix on a nonfinite-number error
 
     def test_cli_rejects_bad_limits_with_usage_exit(self):
         manifest = create_manifest(self.root, ['report.txt'])

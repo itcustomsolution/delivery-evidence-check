@@ -154,8 +154,16 @@ def load_manifest(path):
     try:
         return json.loads(contents.decode('utf-8'), object_pairs_hook=_unique_object,
                           parse_constant=_reject_constant, parse_float=_finite_float)
-    except (ValueError, UnicodeError, RecursionError) as exc:
-        raise EvidenceError('invalid UTF-8 JSON: ' + str(exc)) from exc
+    except EvidenceError:
+        raise
+    except UnicodeDecodeError as exc:
+        raise EvidenceError('manifest must be valid UTF-8 JSON') from exc
+    except json.JSONDecodeError as exc:
+        raise EvidenceError(f'invalid JSON at line {exc.lineno}, column {exc.colno}') from exc
+    except RecursionError as exc:
+        raise EvidenceError('manifest JSON nesting is too deep') from exc
+    except ValueError as exc:  # e.g. an integer literal beyond the interpreter's digit limit
+        raise EvidenceError('manifest contains an unsupported JSON value') from exc
 
 
 def _validate(manifest):
