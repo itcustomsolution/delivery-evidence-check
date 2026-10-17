@@ -7,6 +7,8 @@
 - Human output now also says matching hashes do not prove authenticity or authorization.
 - Restore the documented pull-request Python/platform matrix; README distinguishes configured jobs from executed verification.
 - PyPI metadata (keywords, classifiers, homepage and changelog URLs), README pitch, badge placeholders and install-from-PyPI note.
+- A root or manifest path containing a NUL character is an `EvidenceError` (a `file_unavailable` issue during verification) instead of a raw `ValueError`.
+- Local verification of the 0.2.0rc1 candidate (2026-10-16): CPython 3.10, 3.11, 3.12 and 3.14 on macOS (arm64), from source and from the built wheel. Python 3.13, Linux, Windows and the non-descriptor fallback path were not run; no hosted CI run exists for it.
 
 ## 0.1.0
 

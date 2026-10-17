@@ -69,6 +69,8 @@ def _open_regular(path):
     POSIX uses directory descriptors to narrow path-swap races. The fallback
     checks every component but is not a sandbox against concurrent path changes.
     """
+    if '\x00' in str(path):
+        raise EvidenceError('path contains a NUL character')
     path = Path(path).absolute()
     if '..' in path.parts:
         raise EvidenceError('parent traversal is not allowed in filesystem paths')

@@ -182,10 +182,7 @@ python -m unittest discover -s tests -v
 Tests use temporary directories and synthetic data. The pull-request workflow
 is configured for Python 3.10, 3.12 and 3.14 on Linux, plus Python 3.14 on macOS.
 Configured jobs are not executed by this change; workflow run results are the
-evidence of executed coverage. This candidate was verified locally with CPython
-3.10, 3.11, 3.12 and 3.14 on macOS (arm64), from source and from the built wheel.
-Windows and the non-descriptor fallback path were not run. See
-[CONTRIBUTING.md](CONTRIBUTING.md).
+evidence of executed coverage. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Contributing
 

@@ -152,15 +152,30 @@ class Reader(Base):
             load_manifest(path)
         self.assertNotIn('SENTINEL', str(caught.exception))
         self.assertRegex(str(caught.exception), r'line 1, column \d+')
-        for raw, pattern in ((b'{"x": "\xff"}', 'UTF-8'), (b'[' * 100000 + b']' * 100000, 'too deep|unsupported|invalid'),
-                             (b'{"x": ' + b'9' * 5000 + b'}', 'unsupported')):
+        for raw, pattern in ((b'{"x": "\xff"}', 'UTF-8'), (b'{"x": ' + b'9' * 5000 + b'}', 'unsupported')):
             path.write_bytes(raw)
             with self.assertRaisesRegex(EvidenceError, pattern):
                 load_manifest(path)
+        # Deep nesting never escapes as RecursionError. Some interpreters (CPython 3.14.6 here) parse it
+        # without a recursion limit; verification then refuses it as an invalid manifest.
+        path.write_bytes(b'[' * 100000 + b']' * 100000)
+        try:
+            data = load_manifest(path)
+        except EvidenceError as exc:
+            self.assertRegex(str(exc), 'too deep|unsupported|invalid')
+        else:
+            self.assertFalse(verify_manifest(data, self.root)['ok'])
         path.write_text('{"x": 1e999}')
         with self.assertRaises(EvidenceError) as caught:
             load_manifest(path)
         self.assertNotIn('UTF-8', str(caught.exception))  # no misleading prefix on a nonfinite-number error
+
+    def test_dec_r2_nul_in_root_or_manifest_path_is_an_evidence_error(self):
+        manifest = create_manifest(self.root, ['report.txt'])
+        report = verify_manifest(manifest, str(self.root) + '\x00x')
+        self.assertEqual([i['code'] for i in report['issues']], ['file_unavailable'])
+        with self.assertRaisesRegex(EvidenceError, 'NUL'):
+            load_manifest(str(self.root / 'm.json') + '\x00')
 
     def test_cli_rejects_bad_limits_with_usage_exit(self):
         manifest = create_manifest(self.root, ['report.txt'])
@@ -174,16 +189,20 @@ class Reader(Base):
 
 
 class DocumentedCoverage(unittest.TestCase):
-    def test_dec1_readme_matches_the_configured_ci_matrix(self):
-        workflow = (ROOT / '.github/workflows/tests.yml').read_text()
-        readme = (ROOT / 'README.md').read_text().replace('\n', ' ')
-        configured = sorted(set(re.findall(r"python: '([0-9.]+)'", workflow)))
-        self.assertGreaterEqual(len(configured), 2)
-        claim = re.search(r'pull-request workflow is configured for (.+?macOS)\.', readme).group(1)
-        for version in configured:
-            self.assertIn(version, claim)
-        self.assertIn('not executed by this change', readme)
+    OS_NAMES = {'ubuntu-latest': 'Linux', 'macos-latest': 'macOS', 'windows-latest': 'Windows'}
 
+    def test_dec1_readme_and_ci_matrix_agree_both_ways(self):
+        workflow = (ROOT / '.github/workflows/tests.yml').read_text()
+        readme = ' '.join((ROOT / 'README.md').read_text().split())
+        configured = {(self.OS_NAMES[os_], v) for os_, v in re.findall(r"- os: (\S+)\s+python: '([0-9.]+)'", workflow)}
+        self.assertGreaterEqual(len(configured), 2)
+        claim = re.search(r'pull-request workflow is configured for (.+?(?:Linux|macOS|Windows))[.;]', readme).group(1)
+        claimed = set()
+        for part in claim.split(', plus '):
+            platform = re.search(r' on (\w+)$', part).group(1)
+            claimed |= {(platform, v) for v in re.findall(r'\d+\.\d+', part)}
+        self.assertEqual(claimed, configured)  # every claimed job exists, and every configured job is claimed
+        self.assertIn('not executed by this change', readme)
 
 if __name__ == '__main__':
     unittest.main()
