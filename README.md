@@ -16,7 +16,7 @@ prove that a report is true, that a test passed, or that work is complete.**
 
 A small open-source engineering utility from [IT Custom Solution](https://github.com/itcustomsolution).
 Python 3.10+, no runtime dependencies, no network requests, no commands executed.
-Version 0.1.0. MIT licensed.
+MIT licensed.
 
 ## Try it in one minute
 
@@ -44,7 +44,9 @@ the tool itself never writes, scans directories, expands globs or runs a check.
 List each file explicitly. Do not redirect output onto a listed input file.
 Verification defaults to the manifest's directory unless `--root` is supplied.
 
-After the first PyPI release: `pipx install delivery-evidence-check` (or `pip install delivery-evidence-check`).
+Install the latest published release with `pipx install delivery-evidence-check` (or
+`pip install delivery-evidence-check`). This README describes the source tree, which may contain changes
+that are not released yet.
 
 To install from source in a virtual environment:
 

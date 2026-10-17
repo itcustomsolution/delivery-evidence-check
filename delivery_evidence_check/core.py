@@ -50,6 +50,11 @@ class _ReadBudget:
         return min(limits)
 
 
+def _require_path(value, name):
+    if not isinstance(value, (str, os.PathLike)):
+        raise EvidenceError(name + ' must be a string or path-like object')
+
+
 def _path_parts(value):
     if not isinstance(value, str) or not value:
         raise EvidenceError('path must be a nonempty relative string')
@@ -69,6 +74,7 @@ def _open_regular(path):
     POSIX uses directory descriptors to narrow path-swap races. The fallback
     checks every component but is not a sandbox against concurrent path changes.
     """
+    _require_path(path, 'path')
     if '\x00' in str(path):
         raise EvidenceError('path contains a NUL character')
     path = Path(path).absolute()
@@ -95,7 +101,8 @@ def _open_regular(path):
             fd = os.open(path, flags)
         if not stat.S_ISREG(os.fstat(fd).st_mode):
             raise EvidenceError('expected a regular file')
-        stream = os.fdopen(fd, 'rb')
+        # Unbuffered: a buffered reader would prefetch past the byte budget from a file that grows (DEC-R1).
+        stream = os.fdopen(fd, 'rb', buffering=0)
         fd = None
         with stream:
             yield stream
@@ -150,7 +157,11 @@ def _finite_float(value):
 def load_manifest(path):
     """Read a strict UTF-8 JSON manifest of at most 1 MiB; reject symlinks."""
     with _open_regular(path) as stream:
-        contents = stream.read(MAX_MANIFEST_BYTES + 1)
+        parts, size = [], 0
+        while size <= MAX_MANIFEST_BYTES and (chunk := stream.read(MAX_MANIFEST_BYTES + 1 - size)):
+            parts.append(chunk)
+            size += len(chunk)
+        contents = b''.join(parts)
     if len(contents) > MAX_MANIFEST_BYTES:
         raise EvidenceError('manifest exceeds 1 MiB')
     try:
@@ -239,6 +250,7 @@ def _validate(manifest):
 
 def verify_manifest(manifest, root, *, max_file_bytes=None, max_total_bytes=None):
     """Return a JSON-compatible integrity report. Never execute claimed checks."""
+    _require_path(root, 'root')
     budget = _ReadBudget(max_file_bytes, max_total_bytes)
     issues = _validate(manifest)
     checked = 0
@@ -263,6 +275,7 @@ def verify_manifest(manifest, root, *, max_file_bytes=None, max_total_bytes=None
 
 def create_manifest(root, paths, *, max_file_bytes=None, max_total_bytes=None):
     """Hash explicit paths. Return a new manifest without writing it to disk."""
+    _require_path(root, 'root')
     budget = _ReadBudget(max_file_bytes, max_total_bytes)
     if not paths:
         raise EvidenceError('at least one explicit file is required')

@@ -126,6 +126,33 @@ class PathsAndFilesystem(Base):
         self.assertFalse(report['ok'])
         self.assertIn(report['issues'][0]['code'], ('file_unavailable', 'hash_mismatch'))
 
+    def test_dec_r1_budget_bounds_bytes_read_from_the_descriptor(self):
+        (self.root / 'tiny.bin').write_bytes(b'abc')
+        manifest = create_manifest(self.root, ['tiny.bin'])
+        offsets = []
+        original = core._open_regular
+
+        @contextmanager
+        def hooked(candidate):
+            with original(candidate) as stream:
+                class Reader:
+                    def fileno(self):
+                        return stream.fileno()
+                    def read(self, size):
+                        if not offsets:
+                            with (self.root_path).open('ab') as w:
+                                w.write(b'x' * 4096)  # grows after the size preflight
+                        data = stream.read(size)
+                        offsets.append(os.lseek(stream.fileno(), 0, os.SEEK_CUR))
+                        return data
+                r = Reader()
+                r.root_path = self.root / 'tiny.bin'
+                yield r
+        with patch.object(core, '_open_regular', hooked):
+            report = verify_manifest(manifest, self.root, max_file_bytes=3, max_total_bytes=3)
+        self.assertEqual([i['code'] for i in report['issues']], ['resource_limit'])
+        self.assertLessEqual(max(offsets), 4)  # the budget plus the one detection byte, never a buffer's worth
+
     def test_total_budget_is_cumulative_and_stops_reading_once_spent(self):
         for name in ('a', 'b', 'c'):
             (self.root / name).write_bytes(b'12345')
@@ -176,6 +203,19 @@ class Reader(Base):
         self.assertEqual([i['code'] for i in report['issues']], ['file_unavailable'])
         with self.assertRaisesRegex(EvidenceError, 'NUL'):
             load_manifest(str(self.root / 'm.json') + '\x00')
+
+    def test_wrong_path_types_are_evidence_errors(self):
+        manifest = create_manifest(self.root, ['report.txt'])
+        for call in (lambda: verify_manifest(manifest, None), lambda: load_manifest(None), lambda: create_manifest(None, ['report.txt'])):
+            with self.assertRaisesRegex(EvidenceError, 'path-like'):
+                call()
+
+    def test_dec_r2_readme_states_no_version_other_than_the_package_version(self):
+        from delivery_evidence_check import __version__
+        readme = (ROOT / 'README.md').read_text()
+        for version in re.findall(r'\bVersion (\d+\.\d+\.\d+\S*?)[.\s]', readme):
+            self.assertEqual(version, __version__)
+        self.assertNotIn('After the first PyPI release', readme)
 
     def test_cli_rejects_bad_limits_with_usage_exit(self):
         manifest = create_manifest(self.root, ['report.txt'])
