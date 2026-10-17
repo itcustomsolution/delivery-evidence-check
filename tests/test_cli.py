@@ -172,7 +172,10 @@ class EvidenceCLI(unittest.TestCase):
 
     def test_help_and_version(self):
         self.assertEqual(self.run_cli('--help').returncode, 0)
-        self.assertIn('0.1.0', self.run_cli('--version').stdout)
+        # Release-candidate versions differ from 0.1.0: compare with the package metadata, not a literal.
+        from delivery_evidence_check import __version__
+        self.assertIn(f'version = "{__version__}"', (PACKAGE_ROOT / 'pyproject.toml').read_text())
+        self.assertEqual(self.run_cli('--version').stdout.strip(), __version__)
 
 
 if __name__ == '__main__':
