@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased (0.2.0rc1 candidate; not published)
+## Unreleased (0.2.0rc2 candidate, 2026-10-17; not published; 0.2.0rc1 of 2026-10-16 was the independently audited candidate)
 
 - Reject exponent-overflow JSON numbers such as `1e999` and `-1e999` with `EvidenceError`, matching the documented finite-number rule.
 - New optional byte budgets: `max_file_bytes` / `max_total_bytes` (library, keyword-only) and `--max-file-bytes` / `--max-total-bytes` (CLI, `create` and `verify`). Oversized files are refused before reading, growth past a limit is detected with at most one extra byte read, and the total budget counts every byte read in one call. Exceeding a budget is the new `resource_limit` issue (exit 1). Defaults are unchanged: no limit.
