@@ -16,7 +16,7 @@ prove that a report is true, that a test passed, or that work is complete.**
 
 A small open-source engineering utility from [IT Custom Solution](https://github.com/itcustomsolution).
 Python 3.10+, no runtime dependencies, no network requests, no commands executed.
-Version 0.1.0. MIT licensed.
+MIT licensed.
 
 ## Try it in one minute
 
@@ -44,7 +44,9 @@ the tool itself never writes, scans directories, expands globs or runs a check.
 List each file explicitly. Do not redirect output onto a listed input file.
 Verification defaults to the manifest's directory unless `--root` is supplied.
 
-After the first PyPI release: `pipx install delivery-evidence-check` (or `pip install delivery-evidence-check`).
+Install the latest published release with `pipx install delivery-evidence-check` (or
+`pip install delivery-evidence-check`). This README describes the source tree, which may contain changes
+that are not released yet.
 
 To install from source in a virtual environment:
 
@@ -94,9 +96,23 @@ needs only the Python standard library; no package registry release is required.
   Repeated evidence paths are rejected.
 
 Unknown fields, malformed UTF-8/JSON, duplicate JSON keys and nonfinite numbers
-are rejected. The manifest limit is 1 MiB. Files are hashed in chunks. There is
-no size limit on explicitly listed evidence files, so choose inputs appropriate
-to your time and disk budget.
+are rejected, including exponent overflow such as `1e999`. The manifest limit
+is 1 MiB. Files are hashed in chunks. By default, explicitly listed evidence
+files have no size limit. Set `--max-file-bytes` and/or `--max-total-bytes` on
+`create` or `verify` to bound accepted file sizes and total evidence reads:
+
+```sh
+python -m delivery_evidence_check verify examples/manifest.json \
+  --max-file-bytes 1048576 --max-total-bytes 10485760 --json
+```
+
+Limits are nonnegative integer byte counts; zero permits empty files. A file
+that is already too large is refused before its contents are read. The reader
+also enforces the limit while reading, with at most one extra byte read to
+detect a file growing past a limit. Bytes read from an unsuccessful file count
+toward the total budget. Each invocation starts a fresh budget. These are byte
+limits, not wall-clock timeouts or filesystem isolation; use trusted stable
+files appropriate to your time and disk budget.
 
 `local_checks` records **claims**. Even a claimed `failed` or `not_run` check can
 have an integrity-valid manifest. No check result changes the meaning of a
@@ -118,7 +134,8 @@ Schema errors prevent evidence-file reads. Other file errors are collected.
 
 Common issue codes: `input_error`, `invalid_schema`, `unknown_field`,
 `invalid_path`, `duplicate_path`, `invalid_hash`, `unknown_evidence`,
-`file_unavailable`, `hash_mismatch`. Treat message wording as human-facing.
+`file_unavailable`, `hash_mismatch`, `resource_limit`. A resource-limit failure
+returns exit 1 and never a successful integrity comparison. Treat message wording as human-facing.
 `create` errors go to stderr and produce no JSON; `verify --json` validation
 errors are JSON on stdout. CLI usage errors are on stderr.
 
@@ -136,7 +153,9 @@ report = verify_manifest(loaded, "examples")
 ```
 
 `verify_manifest` returns a report for invalid documents. `load_manifest` and
-`create_manifest` raise `EvidenceError` for input errors. All APIs are read-only.
+`create_manifest` raise `EvidenceError` for input errors. `create_manifest` and
+`verify_manifest` accept optional keyword-only `max_file_bytes` and
+`max_total_bytes`; invalid limits raise `EvidenceError`. All APIs are read-only.
 
 ## Limits and security
 
@@ -162,8 +181,10 @@ private evidence or credentials just to demonstrate this tool.
 python -m unittest discover -s tests -v
 ```
 
-Tests use temporary directories and synthetic data. CI covers Python 3.10, 3.12
-and 3.14 on Linux, plus Python 3.14 on macOS. See [CONTRIBUTING.md](CONTRIBUTING.md).
+Tests use temporary directories and synthetic data. The pull-request workflow
+is configured for Python 3.10, 3.12 and 3.14 on Linux, plus Python 3.14 on macOS.
+Configured jobs are not executed by this change; workflow run results are the
+evidence of executed coverage. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Contributing
 

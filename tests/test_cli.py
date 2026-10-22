@@ -130,9 +130,27 @@ class EvidenceCLI(unittest.TestCase):
 
     def test_rejects_duplicate_json_keys_and_nonfinite_values(self):
         path = self.root / 'bad.json'
-        for contents in ('{"schema_version":1,"schema_version":2,"files":[]}', '{"value":NaN}', '{'):
+        for contents in ('{"schema_version":1,"schema_version":2,"files":[]}', '{"value":NaN}',
+                         '{"value":1e999}', '{"value":-1e999}', '{'):
             path.write_text(contents)
             self.assert_invalid(self.run_cli('verify', path, '--json'), 'input_error')
+
+    def test_optional_budgets_preserve_json_and_create_exit_contracts(self):
+        self.check()
+        path = self.root / 'evidence.json'
+        result = self.run_cli('verify', path, '--max-file-bytes', '3', '--max-total-bytes', '3', '--json')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)['scope'], 'local_file_integrity')
+        for flag in ('--max-file-bytes', '--max-total-bytes'):
+            self.assert_invalid(self.run_cli('verify', path, flag, '2', '--json'), 'resource_limit')
+            result = self.run_cli('create', '--root', self.root, flag, '2', 'report.txt')
+            self.assertEqual(result.returncode, 1)
+            self.assertEqual(result.stdout, '')
+            self.assertIn('max_', result.stderr)
+            for value in ('-1', 'nan', '1.5'):
+                result = self.run_cli('verify', path, flag, value, '--json')
+                self.assertEqual(result.returncode, 2)
+                self.assertEqual(result.stdout, '')
 
     def test_rejects_oversized_input(self):
         path = self.root / 'large.json'
@@ -154,7 +172,10 @@ class EvidenceCLI(unittest.TestCase):
 
     def test_help_and_version(self):
         self.assertEqual(self.run_cli('--help').returncode, 0)
-        self.assertIn('0.1.0', self.run_cli('--version').stdout)
+        # Release-candidate versions differ from 0.1.0: compare with the package metadata, not a literal.
+        from delivery_evidence_check import __version__
+        self.assertIn(f'version = "{__version__}"', (PACKAGE_ROOT / 'pyproject.toml').read_text())
+        self.assertEqual(self.run_cli('--version').stdout.strip(), __version__)
 
 
 if __name__ == '__main__':

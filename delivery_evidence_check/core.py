@@ -2,6 +2,7 @@
 from contextlib import contextmanager
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -13,6 +14,45 @@ MAX_MANIFEST_BYTES = 1024 * 1024
 
 class EvidenceError(ValueError):
     """An input or local file cannot safely be processed."""
+
+
+class _LimitExceeded(EvidenceError):
+    """An explicitly configured hashing budget was exceeded."""
+
+
+class _ReadBudget:
+    def __init__(self, max_file_bytes=None, max_total_bytes=None):
+        for name, value in (('max_file_bytes', max_file_bytes), ('max_total_bytes', max_total_bytes)):
+            if value is not None and (type(value) is not int or value < 0):
+                raise EvidenceError(name + ' must be a nonnegative integer or None')
+        self.max_file_bytes = max_file_bytes
+        self.max_total_bytes = max_total_bytes
+        self.total = 0
+
+    def check(self, file_bytes):
+        if self.max_file_bytes is not None and file_bytes > self.max_file_bytes:
+            raise _LimitExceeded('evidence file exceeds max_file_bytes')
+        if self.max_total_bytes is not None and self.total > self.max_total_bytes:
+            raise _LimitExceeded('evidence reads exceed max_total_bytes')
+
+    def check_size(self, size):
+        if self.max_file_bytes is not None and size > self.max_file_bytes:
+            raise _LimitExceeded('evidence file exceeds max_file_bytes')
+        if self.max_total_bytes is not None and size > self.max_total_bytes - self.total:
+            raise _LimitExceeded('evidence file exceeds remaining max_total_bytes')
+
+    def chunk_size(self, file_bytes):
+        limits = [1024 * 1024]
+        if self.max_file_bytes is not None:
+            limits.append(max(1, self.max_file_bytes - file_bytes + 1))
+        if self.max_total_bytes is not None:
+            limits.append(max(1, self.max_total_bytes - self.total + 1))
+        return min(limits)
+
+
+def _require_path(value, name):
+    if not isinstance(value, (str, os.PathLike)):
+        raise EvidenceError(name + ' must be a string or path-like object')
 
 
 def _path_parts(value):
@@ -34,6 +74,9 @@ def _open_regular(path):
     POSIX uses directory descriptors to narrow path-swap races. The fallback
     checks every component but is not a sandbox against concurrent path changes.
     """
+    _require_path(path, 'path')
+    if '\x00' in str(path):
+        raise EvidenceError('path contains a NUL character')
     path = Path(path).absolute()
     if '..' in path.parts:
         raise EvidenceError('parent traversal is not allowed in filesystem paths')
@@ -58,7 +101,8 @@ def _open_regular(path):
             fd = os.open(path, flags)
         if not stat.S_ISREG(os.fstat(fd).st_mode):
             raise EvidenceError('expected a regular file')
-        stream = os.fdopen(fd, 'rb')
+        # Unbuffered: a buffered reader would prefetch past the byte budget from a file that grows (DEC-R1).
+        stream = os.fdopen(fd, 'rb', buffering=0)
         fd = None
         with stream:
             yield stream
@@ -71,12 +115,18 @@ def _open_regular(path):
             os.close(directory_fd)
 
 
-def _digest(root, relative):
+def _digest(root, relative, budget=None):
     parts = _path_parts(relative)
+    budget = budget if budget is not None else _ReadBudget()
     with _open_regular(Path(root).joinpath(*parts)) as stream:
         before = os.fstat(stream.fileno())
+        budget.check_size(before.st_size)
         digest = hashlib.sha256()
-        for chunk in iter(lambda: stream.read(1024 * 1024), b''):
+        file_bytes = 0
+        while chunk := stream.read(budget.chunk_size(file_bytes)):
+            file_bytes += len(chunk)
+            budget.total += len(chunk)
+            budget.check(file_bytes)
             digest.update(chunk)
         after = os.fstat(stream.fileno())
         if (before.st_size, before.st_mtime_ns, before.st_ctime_ns) != (after.st_size, after.st_mtime_ns, after.st_ctime_ns):
@@ -97,17 +147,36 @@ def _reject_constant(value):
     raise EvidenceError('nonfinite JSON numbers are not supported')
 
 
+def _finite_float(value):
+    number = float(value)
+    if not math.isfinite(number):
+        raise EvidenceError('nonfinite JSON numbers are not supported')
+    return number
+
+
 def load_manifest(path):
     """Read a strict UTF-8 JSON manifest of at most 1 MiB; reject symlinks."""
     with _open_regular(path) as stream:
-        contents = stream.read(MAX_MANIFEST_BYTES + 1)
+        parts, size = [], 0
+        while size <= MAX_MANIFEST_BYTES and (chunk := stream.read(MAX_MANIFEST_BYTES + 1 - size)):
+            parts.append(chunk)
+            size += len(chunk)
+        contents = b''.join(parts)
     if len(contents) > MAX_MANIFEST_BYTES:
         raise EvidenceError('manifest exceeds 1 MiB')
     try:
         return json.loads(contents.decode('utf-8'), object_pairs_hook=_unique_object,
-                          parse_constant=_reject_constant)
-    except (ValueError, UnicodeError, RecursionError) as exc:
-        raise EvidenceError('invalid UTF-8 JSON: ' + str(exc)) from exc
+                          parse_constant=_reject_constant, parse_float=_finite_float)
+    except EvidenceError:
+        raise
+    except UnicodeDecodeError as exc:
+        raise EvidenceError('manifest must be valid UTF-8 JSON') from exc
+    except json.JSONDecodeError as exc:
+        raise EvidenceError(f'invalid JSON at line {exc.lineno}, column {exc.colno}') from exc
+    except RecursionError as exc:
+        raise EvidenceError('manifest JSON nesting is too deep') from exc
+    except ValueError as exc:  # e.g. an integer literal beyond the interpreter's digit limit
+        raise EvidenceError('manifest contains an unsupported JSON value') from exc
 
 
 def _validate(manifest):
@@ -179,15 +248,20 @@ def _validate(manifest):
     return issues
 
 
-def verify_manifest(manifest, root):
+def verify_manifest(manifest, root, *, max_file_bytes=None, max_total_bytes=None):
     """Return a JSON-compatible integrity report. Never execute claimed checks."""
+    _require_path(root, 'root')
+    budget = _ReadBudget(max_file_bytes, max_total_bytes)
     issues = _validate(manifest)
     checked = 0
     if not issues:
         for index, entry in enumerate(manifest['files']):
             location = f'files[{index}]'
             try:
-                actual = _digest(root, entry['path'])
+                actual = _digest(root, entry['path'], budget)
+            except _LimitExceeded as exc:
+                issues.append({'code': 'resource_limit', 'location': location, 'message': str(exc)})
+                continue
             except EvidenceError as exc:
                 issues.append({'code': 'file_unavailable', 'location': location, 'message': str(exc)})
                 continue
@@ -199,8 +273,10 @@ def verify_manifest(manifest, root):
             'claimed_checks': len(checks) if isinstance(checks, list) else 0, 'issues': issues}
 
 
-def create_manifest(root, paths):
+def create_manifest(root, paths, *, max_file_bytes=None, max_total_bytes=None):
     """Hash explicit paths. Return a new manifest without writing it to disk."""
+    _require_path(root, 'root')
+    budget = _ReadBudget(max_file_bytes, max_total_bytes)
     if not paths:
         raise EvidenceError('at least one explicit file is required')
     manifest = {'schema_version': 1, 'files': [{'path': p, 'sha256': '0' * 64} for p in paths]}
@@ -208,5 +284,5 @@ def create_manifest(root, paths):
     if issues:
         raise EvidenceError(issues[0]['message'])
     for entry in manifest['files']:
-        entry['sha256'] = _digest(root, entry['path'])
+        entry['sha256'] = _digest(root, entry['path'], budget)
     return manifest
