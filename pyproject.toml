@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "delivery-evidence-check"
-version = "0.2.0rc2"
+version = "0.2.0"
 description = "Check SHA-256 integrity of explicitly listed local evidence files."
 readme = "README.md"
 requires-python = ">=3.10"
