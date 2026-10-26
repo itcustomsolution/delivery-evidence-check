@@ -2,10 +2,6 @@
 
 > Fingerprint delivered files with SHA-256 so you can check later that nothing was swapped or edited, provided the manifest itself is kept somewhere the other party cannot change.
 
-<!-- Badges: enable after first PyPI publish -->
-<!-- [![PyPI](https://img.shields.io/pypi/v/delivery-evidence-check)](https://pypi.org/project/delivery-evidence-check/) -->
-<!-- [![tests](https://github.com/itcustomsolution/delivery-evidence-check/actions/workflows/tests.yml/badge.svg)](https://github.com/itcustomsolution/delivery-evidence-check/actions/workflows/tests.yml) -->
-[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 Check that the local files accompanying a handoff still match an explicit
 SHA-256 manifest. Create a manifest from named files, verify it later, and get
@@ -17,6 +13,21 @@ prove that a report is true, that a test passed, or that work is complete.**
 A small open-source engineering utility from [IT Custom Solution](https://github.com/itcustomsolution).
 Python 3.10+, no runtime dependencies, no network requests, no commands executed.
 MIT licensed.
+
+## Release and verification
+
+As of **26 October 2026**, [0.2.0 on PyPI](https://pypi.org/project/delivery-evidence-check/0.2.0/) is the published package, with [GitHub release v0.2.0](https://github.com/itcustomsolution/delivery-evidence-check/releases/tag/v0.2.0) and an [MIT license](LICENSE). This README follows the source tree; development changes may precede a package release.
+
+The [release-preparation test run](https://github.com/itcustomsolution/delivery-evidence-check/actions/runs/39721400231) passed. That link records its own revision and jobs; it is not a claim that every later commit or platform has been tested. Run the [local checks](#development) for your checkout.
+
+For a repeatable package install in an activated virtual environment:
+
+```sh
+python -m pip install 'delivery-evidence-check==0.2.0'
+delivery-evidence-check --version
+```
+
+The [two-tool walkthrough](https://github.com/itcustomsolution/.github/blob/main/docs/public-tools-walkthrough.md) shows a consistent handoff, a valid manifest and deliberate failure cases using fictional data.
 
 ## Try it in one minute
 
