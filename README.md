@@ -197,6 +197,12 @@ is configured for Python 3.10, 3.12 and 3.14 on Linux, plus Python 3.14 on macOS
 Configured jobs are not executed by this change; workflow run results are the
 evidence of executed coverage. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
+## Using file evidence in a workflow
+
+Keep the manifest in an independently trusted location and have the recipient review the delivered work against agreed acceptance criteria. This utility checks local byte integrity; it does not create an evidence store, approve a delivery or establish that a live workflow meets its requirements.
+
+For help defining evidence gaps, owners and exceptions in one IT workflow, see ITC's [IT Operations Workflow Review](https://itcustomsolution.com/practices/consulting). The outcome is a practical improvement brief, with optional AI readiness where relevant. Storage, integration and ongoing operation require a separate implementation scope.
+
 ## Contributing
 
 Issues and small pull requests are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Run `python -m unittest discover -s tests` before opening a PR. Release history is in [CHANGELOG.md](CHANGELOG.md).
