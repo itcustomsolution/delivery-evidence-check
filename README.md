@@ -16,14 +16,14 @@ MIT licensed.
 
 ## Release and verification
 
-As of **26 October 2026**, [0.2.0 on PyPI](https://pypi.org/project/delivery-evidence-check/0.2.0/) is the published package, with [GitHub release v0.2.0](https://github.com/itcustomsolution/delivery-evidence-check/releases/tag/v0.2.0) and an [MIT license](LICENSE). This README follows the source tree; development changes may precede a package release.
+Published packages are on [PyPI](https://pypi.org/project/delivery-evidence-check/), and release notes are on [GitHub](https://github.com/itcustomsolution/delivery-evidence-check/releases). The source tree may contain unreleased changes. The tool is [MIT licensed](https://github.com/itcustomsolution/delivery-evidence-check/blob/main/LICENSE).
 
 The [release-preparation test run](https://github.com/itcustomsolution/delivery-evidence-check/actions/runs/39721400231) passed. That link records its own revision and jobs; it is not a claim that every later commit or platform has been tested. Run the [local checks](#development) for your checkout.
 
-For a repeatable package install in an activated virtual environment:
+Install the latest published package in an activated virtual environment:
 
 ```sh
-python -m pip install 'delivery-evidence-check==0.2.0'
+python -m pip install --upgrade delivery-evidence-check
 delivery-evidence-check --version
 ```
 
@@ -183,7 +183,7 @@ The manifest is unsigned: changing both the file and its recorded hash defeats
 this comparison. No authenticity, provenance, ownership, completeness, malware
 safety, certification or deployment claim follows from `ok: true`.
 
-Read [SECURITY.md](SECURITY.md) before using sensitive evidence. Never commit
+Read [SECURITY.md](https://github.com/itcustomsolution/delivery-evidence-check/blob/main/SECURITY.md) before using sensitive evidence. Never commit
 private evidence or credentials just to demonstrate this tool.
 
 ## Development
@@ -195,7 +195,7 @@ python -m unittest discover -s tests -v
 Tests use temporary directories and synthetic data. The pull-request workflow
 is configured for Python 3.10, 3.12 and 3.14 on Linux, plus Python 3.14 on macOS.
 Configured jobs are not executed by this change; workflow run results are the
-evidence of executed coverage. See [CONTRIBUTING.md](CONTRIBUTING.md).
+evidence of executed coverage. See [CONTRIBUTING.md](https://github.com/itcustomsolution/delivery-evidence-check/blob/main/CONTRIBUTING.md).
 
 ## Using file evidence in a workflow
 
@@ -207,8 +207,8 @@ The review covers one workflow: process map, exceptions, evidence gaps, ownershi
 
 ## Contributing
 
-Issues and small pull requests are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Run `python -m unittest discover -s tests` before opening a PR. Release history is in [CHANGELOG.md](CHANGELOG.md).
+Issues and small pull requests are welcome; see [CONTRIBUTING.md](https://github.com/itcustomsolution/delivery-evidence-check/blob/main/CONTRIBUTING.md). Run `python -m unittest discover -s tests` before opening a PR. Release history is in [CHANGELOG.md](https://github.com/itcustomsolution/delivery-evidence-check/blob/main/CHANGELOG.md).
 
 ## License
 
-MIT, see [LICENSE](LICENSE).
+MIT, see [LICENSE](https://github.com/itcustomsolution/delivery-evidence-check/blob/main/LICENSE).
