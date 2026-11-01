@@ -203,6 +203,8 @@ Keep the manifest in an independently trusted location and have the recipient re
 
 For help defining evidence gaps, owners and exceptions in one IT workflow, see ITC's [IT Operations Workflow Review](https://itcustomsolution.com/practices/consulting). The outcome is a practical improvement brief, with optional AI readiness where relevant. Storage, integration and ongoing operation require a separate implementation scope.
 
+The review covers one workflow: process map, exceptions, evidence gaps, ownership and access, prioritized actions, and handover. An automation brief is included only if justified. Scope, timing and fees follow inquiry; implementation is separate.
+
 ## Contributing
 
 Issues and small pull requests are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Run `python -m unittest discover -s tests` before opening a PR. Release history is in [CHANGELOG.md](CHANGELOG.md).

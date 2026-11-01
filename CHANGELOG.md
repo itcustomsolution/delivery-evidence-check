@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.2.1] - Prepared for release
+
+- Refresh package-page documentation and project links to match the public ITC documentation.
+- Clarify the tool's scope and the separately scoped services inquiry path; no runtime behavior changes.
+
 ## 0.2.0 (2026-10-22)
 
 - Reject exponent-overflow JSON numbers such as `1e999` and `-1e999` with `EvidenceError`, matching the documented finite-number rule.

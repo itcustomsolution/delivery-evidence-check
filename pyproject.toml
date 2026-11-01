@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "delivery-evidence-check"
-version = "0.2.0"
+version = "0.2.1"
 description = "Check SHA-256 integrity of explicitly listed local evidence files."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -27,6 +27,7 @@ classifiers = [
 delivery-evidence-check = "delivery_evidence_check.__main__:main"
 
 [project.urls]
+"IT Custom Solution" = "https://itcustomsolution.com"
 Homepage = "https://github.com/itcustomsolution/delivery-evidence-check"
 Changelog = "https://github.com/itcustomsolution/delivery-evidence-check/blob/main/CHANGELOG.md"
 Repository = "https://github.com/itcustomsolution/delivery-evidence-check"
